@@ -97,7 +97,7 @@ func (u *UsageReporter) PeriodicallyReportUsage(ctx context.Context) {
 
 	doReport := func() {
 		alpEnabled := (config["PolicySyncPathPrefix"] != "")
-        bpfEnabled := (config["BPFEnabled"] == "true" )
+		bpfEnabled := (config["BPFEnabled"] == "true")
 		u.reportUsage(config["ClusterGUID"], config["ClusterType"], config["CalicoVersion"], alpEnabled, bpfEnabled, stats)
 	}
 
@@ -190,9 +190,9 @@ func (u *UsageReporter) calculateURL(clusterGUID, clusterType, calicoVersion str
 	if clusterGUID == "" {
 		clusterGUID = "baddecaf"
 	}
-    if (bpfEnabled) {
-        clusterType = clusterType + ",bpf"
-    }
+	if bpfEnabled {
+		clusterType = clusterType + ",bpf"
+	}
 	log.WithFields(log.Fields{
 		"clusterGUID":       clusterGUID,
 		"clusterType":       clusterType,
