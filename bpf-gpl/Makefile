@@ -25,6 +25,29 @@
 # directories.
 LINUX_COMMON=$(wildcard /usr/src/linux-headers-*-common)
 LINUX_AMD64=$(wildcard /usr/src/linux-headers-*-amd64)
+K_CFLAGS=\
+	-x c \
+	-D__KERNEL__ \
+	-D__ASM_SYSREG_H \
+	-D__LINUX_BPF_H__ \
+	-Wno-unused-value \
+	-Wno-unused-label \
+	-Wno-pointer-sign \
+	-Wno-compare-distinct-pointer-types \
+	-Wunused \
+	-Wall \
+	-Werror \
+	-fno-stack-protector \
+	-O2 \
+	-emit-llvm \
+	-I$(LINUX_COMMON)/include \
+	-I$(LINUX_COMMON)/include/uapi \
+	-I$(LINUX_COMMON)/arch/x86/include \
+	-I$(LINUX_COMMON)/arch/x86/include/uapi \
+	-I$(LINUX_AMD64)/include \
+	-I$(LINUX_AMD64)/arch/x86/include/generated \
+	-I$(LINUX_AMD64)/include/generated/uapi
+
 
 CFLAGS +=  \
 	-x c \
@@ -51,16 +74,19 @@ UT_OBJS:=$(UT_C_FILES:.c=.o) $(shell ./list-ut-objs)
 
 OBJS:=$(shell ./list-objs)
 C_FILES:=tc.c connect_balancer.c
+KC_FILES:=tcp_kprobe.c
 
 all: $(OBJS)
 ut-objs: $(UT_OBJS)
 
 COMPILE=$(CC) $(CFLAGS) `./calculate-flags $@` -c $< -o $@
+K_COMPILE=$(CC) $(CFLAGS) $(K_CFLAGS) `./calculate-flags $@` -c $< -o $@
 connect_time_%v4.ll: connect_balancer.c connect_balancer.d calculate-flags
 	$(COMPILE)
 connect_time_%v6.ll: connect_balancer_v6.c connect_balancer_v6.d calculate-flags
 	$(COMPILE)
-
+tcp_%_kprobe.ll: tcp_kprobe.c tcp_kprobe.d calculate-flags
+	$(K_COMPILE)
 UT_CFLAGS=\
 	-D__BPFTOOL_LOADER__ \
 	-DCALI_LOG_LEVEL=CALI_LOG_LEVEL_DEBUG \
@@ -94,6 +120,8 @@ bin/connect_time_%v4.o: connect_time_%v4.ll | bin
 	$(LINK)
 bin/connect_time_%v6.o: connect_time_%v6.ll | bin
 	$(LINK)
+bin/tcp_%kprobe.o: tcp_%kprobe.ll | bin
+	$(LINK)
 ut/%.o: ut/%.ll
 	$(LINK)
 
@@ -105,6 +133,11 @@ bin:
 %.d: %.c
 	set -e; rm -f $@; \
 		$(CC) -M $(CFLAGS) $< > $@.$$$$ || { rm -f $@.$$$$; false; } ; \
+		sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+		rm -f $@.$$$$
+tcp_kprobe.d: tcp_kprobe.c
+	set -e; rm -f $@; \
+		$(CC) -M $(K_CFLAGS) $< > $@.$$$$ || { rm -f $@.$$$$; false; } ; \
 		sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
 		rm -f $@.$$$$
 
