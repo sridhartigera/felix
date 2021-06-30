@@ -116,10 +116,12 @@ bin:
 	set -e; rm -f $@; \
 		$(CC) -M $(CFLAGS) $< > $@.$$$$ || { rm -f $@.$$$$; false; } ; \
 		sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
-		rm -f $@.$$$$
+		rm -f $@.$$$$; \
+		make -C include/libbpf/src BUILD_STATIC_ONLY=1;
 
 D_FILES=$(C_FILES:.c=.d)
 include $(D_FILES)
 
 clean:
-	rm -f *.o *.ll *.d bin/* ut/*.o ut/*.d ut/*.ll
+	rm -f *.o *.ll *.d bin/* ut/*.o ut/*.d ut/*.ll; \
+	make -C include/libbpf/src clean;

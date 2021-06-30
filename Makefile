@@ -166,15 +166,20 @@ sub-build-%:
 bin/calico-felix: bin/calico-felix-$(ARCH)
 	ln -f bin/calico-felix-$(ARCH) bin/calico-felix
 
+libbpf.a:
+	$(MAKE) -C bpf-gpl/include/libbpf/src BUILD_STATIC_ONLY=1 
+
 ifeq ($(ARCH), amd64)
 CGO_ENABLED=1
+CGO_LDFLAGS="-Lbpf-gpl/include/libbpf/src -lbpf -lelf -lz"
 else
 CGO_ENABLED=0
+CGO_LDFLAGS=""
 endif
 
-DOCKER_GO_BUILD_CGO=$(DOCKER_RUN) -e CGO_ENABLED=$(CGO_ENABLED) $(CALICO_BUILD)
+DOCKER_GO_BUILD_CGO=$(DOCKER_RUN) -e CGO_ENABLED=$(CGO_ENABLED) -e CGO_LDFLAGS=$(CGO_LDFLAGS) $(CALICO_BUILD)
 
-bin/calico-felix-$(ARCH): $(SRC_FILES) $(LOCAL_BUILD_DEP)
+bin/calico-felix-$(ARCH): libbpf.a $(SRC_FILES) $(LOCAL_BUILD_DEP)
 	@echo Building felix for $(ARCH) on $(BUILDARCH)
 	mkdir -p bin
 	if [ "$(SEMAPHORE)" != "true" -o ! -e $@ ] ; then \
